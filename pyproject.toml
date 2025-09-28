@@ -16,6 +16,8 @@ python-dotenv = "^1.1.1"
 flake8 = "^7.3.0"
 black = "^25.9.0"
 isort = "^6.0.1"
+coreapi = "^2.3.3"
+drf-yasg = "^1.21.11"
 
 
 [build-system]
