@@ -108,11 +108,8 @@ class NetworkNodeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NetworkNode
-        fields = [
-            'id', 'name', 'node_type', 'hierarchy_level', 'city', 'country',
-            'supplier_name', 'debt', 'created_at', 'contact', 'products', 'supplier'
-        ]
-        read_only_fields = ['debt', 'created_at', 'hierarchy_level']
+        fields = '__all__'
+        read_only_fields = ['debt']
 
 
 class NetworkNodeCreateUpdateSerializer(serializers.ModelSerializer):
