@@ -1,21 +1,15 @@
-from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
+from rest_framework import viewsets, permissions
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import FilterSet, CharFilter
 from .models import NetworkNode
-from .serializers import (
-    NetworkNodeListSerializer,
-    NetworkNodeDetailSerializer,
-    NetworkNodeCreateUpdateSerializer
-)
+from .serializers import NetworkNodeSerializer, NetworkNodeCreateSerializer
 
 
 class IsActiveEmployee(permissions.BasePermission):
     """
-    Разрешение, позволяющее доступ только активным сотрудникам.
+    Разрешение, предоставляющее доступ только активным сотрудникам.
 
-    Проверяет, что пользователь аутентифицирован и имеет активный статус.
+    Проверяет, что пользователь аутентифицирован и имеет статус is_active=True.
     """
 
     def has_permission(self, request, view):
@@ -23,20 +17,24 @@ class IsActiveEmployee(permissions.BasePermission):
         Проверяет права доступа пользователя.
 
         Args:
-            request: HTTP запрос
-            view: Представление, к которому осуществляется доступ
+            request: Объект запроса
+            view: Объект представления
 
         Returns:
-            bool: True если пользователь активен, иначе False
+            bool: True если доступ разрешен, иначе False
         """
-        return request.user and request.user.is_authenticated and request.user.is_active
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.is_active
+        )
 
 
 class NetworkNodeFilter(FilterSet):
     """
-    Фильтр для звеньев сети.
+    Фильтр для NetworkNode.
 
-    Позволяет фильтровать звенья по стране контактной информации.
+    Позволяет фильтровать звенья сети по стране.
     """
 
     country = CharFilter(field_name='contact__country', lookup_expr='iexact')
@@ -48,10 +46,10 @@ class NetworkNodeFilter(FilterSet):
 
 class NetworkNodeViewSet(viewsets.ModelViewSet):
     """
-    ViewSet для CRUD операций с звеньями сети.
+    ViewSet для выполнения CRUD операций с NetworkNode.
 
     Обеспечивает:
-    - Создание, чтение, обновление, удаление звеньев
+    - Создание, чтение, обновление и удаление звеньев сети
     - Фильтрацию по стране
     - Автоматическое вычисление уровня иерархии
     - Запрет на обновление задолженности через API
@@ -63,20 +61,15 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Оптимизирует запросы к базе данных.
+        Возвращает оптимизированный QuerySet для NetworkNode.
 
         Returns:
-            QuerySet: Оптимизированный QuerySet с предзагрузкой связанных объектов
+            QuerySet: QuerySet с предзагрузкой связанных объектов
         """
-        queryset = NetworkNode.objects.select_related(
-            'contact', 'supplier'
-        ).prefetch_related('products')
-
-        # Дополнительная фильтрация по стране из query params
+        queryset = NetworkNode.objects.all()
         country = self.request.query_params.get('country')
         if country:
             queryset = queryset.filter(contact__country__iexact=country)
-
         return queryset
 
     def get_serializer_class(self):
@@ -84,54 +77,21 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
         Выбирает сериализатор в зависимости от действия.
 
         Returns:
-            Serializer: Соответствующий сериализатор для текущего действия
+            Serializer: Класс сериализатора для текущего действия
         """
-        if self.action == 'list':
-            return NetworkNodeListSerializer
-        elif self.action == 'retrieve':
-            return NetworkNodeDetailSerializer
-        return NetworkNodeCreateUpdateSerializer
+        if self.action == 'create':
+            return NetworkNodeCreateSerializer
+        return NetworkNodeSerializer
 
-    def update(self, request, *args, **kwargs):
+    def perform_update(self, serializer):
         """
-        Обновляет звено сети.
+        Выполняет обновление объекта.
 
         Запрещает обновление поля 'debt' через API.
 
         Args:
-            request: HTTP запрос
-            *args: Дополнительные аргументы
-            **kwargs: Дополнительные именованные аргументы
-
-        Returns:
-            Response: Ответ с обновленными данными
+            serializer: Экземпляр сериализатора
         """
-        # Запрещаем обновление поля debt через API
-        if 'debt' in request.data:
-            request.data.pop('debt')
-        return super().update(request, *args, **kwargs)
-
-    @action(detail=False, methods=['get'])
-    def hierarchy_stats(self, request):
-        """
-        Пользовательское действие для получения статистики по иерархии.
-
-        Returns:
-            Response: Статистика по количеству звеньев каждого уровня
-        """
-        stats = {}
-        for node_type, _ in NetworkNode.NodeType.choices:
-            stats[node_type] = {
-                'total': NetworkNode.objects.filter(node_type=node_type).count(),
-                'by_level': {}
-            }
-
-            # Группируем по уровням иерархии
-            nodes = NetworkNode.objects.filter(node_type=node_type)
-            for node in nodes:
-                level = node.hierarchy_level
-                if level not in stats[node_type]['by_level']:
-                    stats[node_type]['by_level'][level] = 0
-                stats[node_type]['by_level'][level] += 1
-
-        return Response(stats)
+        if 'debt' in serializer.validated_data:
+            del serializer.validated_data['debt']
+        serializer.save()

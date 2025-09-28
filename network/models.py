@@ -1,15 +1,15 @@
+# network/models.py
 from django.db import models
-from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 
 
 class Contact(models.Model):
     """
-    Модель контактной информации для звена сети.
+    Модель для хранения контактной информации звена сети.
 
     Attributes:
-        email (EmailField): Электронная почта (уникальная)
+        email (EmailField): Электронная почта
         country (CharField): Страна
         city (CharField): Город
         street (CharField): Улица
@@ -25,15 +25,14 @@ class Contact(models.Model):
     class Meta:
         verbose_name = 'Контакт'
         verbose_name_plural = 'Контакты'
-        db_table = 'network_contacts'
 
     def __str__(self):
-        return f"{self.email} ({self.city}, {self.country})"
+        return self.email
 
 
 class Product(models.Model):
     """
-    Модель продукта, который продается в сети.
+    Модель для хранения информации о продукте.
 
     Attributes:
         name (CharField): Название продукта
@@ -48,8 +47,6 @@ class Product(models.Model):
     class Meta:
         verbose_name = 'Продукт'
         verbose_name_plural = 'Продукты'
-        db_table = 'network_products'
-        ordering = ['-release_date']
 
     def __str__(self):
         return f"{self.name} {self.model}"
@@ -59,20 +56,20 @@ class NetworkNode(models.Model):
     """
     Модель звена сети по продаже электроники.
 
-    Иерархическая структура: Завод -> Розничная сеть -> Индивидуальный предприниматель
-    Каждое звено ссылается на одного поставщика оборудования.
+    Представляет иерархическую структуру из трех уровней: завод, розничная сеть, ИП.
 
     Attributes:
         name (CharField): Название звена
         node_type (CharField): Тип звена (factory/retail/entrepreneur)
         contact (OneToOneField): Контактная информация
-        products (ManyToManyField): Продукты, которые продает звено
-        supplier (ForeignKey): Поставщик оборудования (может быть любого уровня)
+        products (ManyToManyField): Связанные продукты
+        supplier (ForeignKey): Поставщик оборудования
         debt (DecimalField): Задолженность перед поставщиком
-        created_at (DateTimeField): Время создания записи
+        created_at (DateTimeField): Дата создания записи
     """
 
     class NodeType(models.TextChoices):
+        """Типы звеньев сети."""
         FACTORY = 'factory', 'Завод'
         RETAIL = 'retail', 'Розничная сеть'
         ENTREPRENEUR = 'entrepreneur', 'Индивидуальный предприниматель'
@@ -91,7 +88,7 @@ class NetworkNode(models.Model):
     products = models.ManyToManyField(
         Product,
         verbose_name='Продукты',
-        related_name='network_nodes'
+        blank=True
     )
     supplier = models.ForeignKey(
         'self',
@@ -113,50 +110,19 @@ class NetworkNode(models.Model):
     class Meta:
         verbose_name = 'Звено сети'
         verbose_name_plural = 'Звенья сети'
-        db_table = 'network_nodes'
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['node_type']),
-            models.Index(fields=['created_at']),
-        ]
 
     @property
-    def hierarchy_level(self) -> int:
+    def hierarchy_level(self):
         """
         Вычисляет уровень иерархии звена.
 
         Returns:
-            int: Уровень иерархии (0 для завода без поставщика)
-
-        Examples:
-            >>> Завод без поставщика: уровень 0
-            >>> Розничная сеть, ссылающаяся на завод: уровень 1
-            >>> ИП, ссылающийся на розничную сеть: уровень 2
+            int: Уровень иерархии (0 для завода, 1 для РС, ссылающейся на завод, и т.д.)
         """
         if self.supplier is None:
             return 0
         return self.supplier.hierarchy_level + 1
 
-    def clean(self):
-        """Валидация модели перед сохранением."""
-        from django.core.exceptions import ValidationError
-
-        # Запрещаем циклические ссылки
-        if self.supplier and self.supplier == self:
-            raise ValidationError({'supplier': 'Звено не может быть своим собственным поставщиком.'})
-
-        # Проверяем, что поставщик не является потомком
-        if self.supplier and self.pk:
-            current = self.supplier
-            while current:
-                if current == self:
-                    raise ValidationError({'supplier': 'Обнаружена циклическая ссылка в цепочке поставщиков.'})
-                current = current.supplier
-
-    def save(self, *args, **kwargs):
-        """Переопределяем save для добавления валидации."""
-        self.clean()
-        super().save(*args, **kwargs)
-
     def __str__(self):
-        return f"{self.get_node_type_display()}: {self.name} (Уровень: {self.hierarchy_level})"
+        return f"{self.get_node_type_display()}: {self.name}"

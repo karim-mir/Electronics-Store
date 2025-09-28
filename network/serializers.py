@@ -8,7 +8,6 @@ class ContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = '__all__'
-        read_only_fields = ['id']
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -17,17 +16,15 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = '__all__'
-        read_only_fields = ['id']
 
 
-class NetworkNodeListSerializer(serializers.ModelSerializer):
+class NetworkNodeSerializer(serializers.ModelSerializer):
     """
-    Сериализатор для списка звеньев сети.
+    Сериализатор для чтения данных NetworkNode.
 
-    Оптимизирован для отображения в списке - содержит только основные поля.
+    Включает вычисляемые поля и связанные объекты.
     """
 
-    contact = ContactSerializer(read_only=True)
     hierarchy_level = serializers.ReadOnlyField()
     supplier_name = serializers.CharField(source='supplier.name', read_only=True)
     city = serializers.CharField(source='contact.city', read_only=True)
@@ -37,53 +34,33 @@ class NetworkNodeListSerializer(serializers.ModelSerializer):
         model = NetworkNode
         fields = [
             'id', 'name', 'node_type', 'hierarchy_level', 'city', 'country',
-            'supplier_name', 'debt', 'created_at'
+            'supplier_name', 'debt', 'created_at', 'contact', 'products', 'supplier'
         ]
-
-
-class NetworkNodeDetailSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для детального просмотра звена сети.
-
-    Содержит полную информацию о звене, включая связанные объекты.
-    """
-
-    contact = ContactSerializer()
-    products = ProductSerializer(many=True, read_only=True)
-    hierarchy_level = serializers.ReadOnlyField()
-    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
-
-    class Meta:
-        model = NetworkNode
-        fields = '__all__'
         read_only_fields = ['debt', 'created_at', 'hierarchy_level']
 
 
-class NetworkNodeCreateUpdateSerializer(serializers.ModelSerializer):
+class NetworkNodeCreateSerializer(serializers.ModelSerializer):
     """
-    Сериализатор для создания и обновления звеньев сети.
+    Сериализатор для создания и обновления NetworkNode.
 
-    Запрещает обновление поля 'debt' через API.
+    Запрещает прямое обновление поля 'debt'.
     """
 
     class Meta:
         model = NetworkNode
         fields = ['id', 'name', 'node_type', 'contact', 'products', 'supplier']
-        read_only_fields = ['debt']
 
-    def validate_supplier(self, value):
+    def validate(self, data):
         """
-        Валидация поставщика.
+        Проверяет данные перед созданием/обновлением.
 
         Args:
-            value: Объект NetworkNode, который устанавливается как поставщик
+            data: Входные данные
 
         Returns:
-            NetworkNode: Проверенный объект поставщика
+            dict: Проверенные данные
 
         Raises:
-            serializers.ValidationError: Если поставщик невалиден
+            serializers.ValidationError: Если данные невалидны
         """
-        if value and value == self.instance:
-            raise serializers.ValidationError("Звено не может быть своим собственным поставщиком.")
-        return value
+        return data
