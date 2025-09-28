@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Contact, Product, NetworkNode
+
+from .models import Contact, NetworkNode, Product
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -28,8 +29,8 @@ class ContactSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Contact
-        fields = '__all__'
-        read_only_fields = ['id']
+        fields = "__all__"
+        read_only_fields = ["id"]
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -51,8 +52,8 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = '__all__'
-        read_only_fields = ['id']
+        fields = "__all__"
+        read_only_fields = ["id"]
 
 
 class NetworkNodeSerializer(serializers.ModelSerializer):
@@ -88,28 +89,26 @@ class NetworkNodeSerializer(serializers.ModelSerializer):
     contact = ContactSerializer(read_only=True)
     products = ProductSerializer(many=True, read_only=True)
     hierarchy_level = serializers.ReadOnlyField(
-        help_text='Уровень иерархии, вычисляемый на основе цепочки поставщиков'
+        help_text="Уровень иерархии, вычисляемый на основе цепочки поставщиков"
     )
     supplier_name = serializers.CharField(
-        source='supplier.name',
+        source="supplier.name",
         read_only=True,
-        help_text='Название поставщика оборудования'
+        help_text="Название поставщика оборудования",
     )
     city = serializers.CharField(
-        source='contact.city',
-        read_only=True,
-        help_text='Город расположения звена сети'
+        source="contact.city", read_only=True, help_text="Город расположения звена сети"
     )
     country = serializers.CharField(
-        source='contact.country',
+        source="contact.country",
         read_only=True,
-        help_text='Страна расположения звена сети'
+        help_text="Страна расположения звена сети",
     )
 
     class Meta:
         model = NetworkNode
-        fields = '__all__'
-        read_only_fields = ['debt']
+        fields = "__all__"
+        read_only_fields = ["debt"]
 
 
 class NetworkNodeCreateUpdateSerializer(serializers.ModelSerializer):
@@ -137,8 +136,8 @@ class NetworkNodeCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NetworkNode
-        fields = ['id', 'name', 'node_type', 'contact', 'products', 'supplier']
-        read_only_fields = ['debt']
+        fields = ["id", "name", "node_type", "contact", "products", "supplier"]
+        read_only_fields = ["debt"]
 
     def validate(self, data):
         """
@@ -174,7 +173,7 @@ class NetworkNodeCreateUpdateSerializer(serializers.ModelSerializer):
         Notes:
             Автоматически обрабатывает ManyToMany поле products
         """
-        products_data = validated_data.pop('products', [])
+        products_data = validated_data.pop("products", [])
         node = NetworkNode.objects.create(**validated_data)
         node.products.set(products_data)
         return node
@@ -190,7 +189,7 @@ class NetworkNodeCreateUpdateSerializer(serializers.ModelSerializer):
         Returns:
             NetworkNode: Обновленный объект
         """
-        products_data = validated_data.pop('products', None)
+        products_data = validated_data.pop("products", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

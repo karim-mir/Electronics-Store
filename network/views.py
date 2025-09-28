@@ -1,39 +1,41 @@
-from rest_framework import viewsets, permissions, status, filters
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from django_filters.rest_framework import DjangoFilterBackend
-from django_filters import FilterSet, CharFilter
 from django.db.models import Count, Sum
+from django_filters import CharFilter, FilterSet
+from rest_framework import filters, permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 from .models import NetworkNode
-from .serializers import NetworkNodeSerializer, NetworkNodeCreateUpdateSerializer
+from .serializers import (NetworkNodeCreateUpdateSerializer,
+                          NetworkNodeSerializer)
 
 
 class IsActiveEmployee(permissions.BasePermission):
     """
     Разрешение, предоставляющее доступ только активным сотрудникам.
     """
+
     def has_permission(self, request, view):
-        return bool(
-            request.user and
-            request.user.is_authenticated and
-            request.user.is_active
-        )
+        # Сначала проверяем аутентификацию
+        if not request.user or not request.user.is_authenticated:
+            return False
+        # Затем проверяем, что пользователь активен
+        return request.user.is_active
 
 
 class NetworkNodeFilter(FilterSet):
     """
     Фильтр для NetworkNode с поддержкой фильтрации по стране.
     """
+
     country = CharFilter(
-        field_name='country',  # Исправлено: было 'contact__country'
-        lookup_expr='iexact',
-        help_text='Фильтрация по стране (регистронезависимая)'
+        field_name="contact__country",
+        lookup_expr="iexact",
+        help_text="Фильтрация по стране (регистронезависимая)",
     )
 
     class Meta:
         model = NetworkNode
-        fields = ['country']  # Исправлено: было ['contact__country']
+        fields = ["country"]
 
 
 class NetworkNodeViewSet(viewsets.ModelViewSet):
@@ -42,21 +44,20 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
     """
     queryset = NetworkNode.objects.all()
     serializer_class = NetworkNodeSerializer
-    permission_classes = [IsAuthenticated]  # Или [IsActiveEmployee] если хотите использовать ваш кастомный
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]  # Теперь filters определен
-    filterset_class = NetworkNodeFilter  # Используем кастомный фильтр
-    search_fields = ['name', 'city']
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.SearchFilter]  # Убрали DjangoFilterBackend
+    search_fields = ['name', 'contact__city', 'contact__country']
 
     def get_queryset(self):
         """
         Возвращает оптимизированный QuerySet для NetworkNode.
         """
-        queryset = NetworkNode.objects.all()
+        queryset = NetworkNode.objects.select_related('contact', 'supplier').prefetch_related('products')
 
-        # Дополнительная фильтрация по стране из query parameters
+        # Ручная фильтрация по стране
         country = self.request.query_params.get('country')
         if country:
-            queryset = queryset.filter(country__iexact=country)  # Исправлено: было contact__country
+            queryset = queryset.filter(contact__country__iexact=country)
 
         return queryset
 
@@ -82,6 +83,20 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
             )
         return super().update(request, *args, **kwargs)
 
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Обрабатывает запросы на частичное обновление объекта.
+        """
+        if 'debt' in request.data:
+            return Response(
+                {
+                    'error': 'Обновление задолженности запрещено через API',
+                    'detail': 'Используйте админ-панель для изменения задолженности'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().partial_update(request, *args, **kwargs)
+
     @action(detail=False, methods=['get'])
     def statistics(self, request):
         """
@@ -92,7 +107,8 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
             'total_debt': NetworkNode.objects.aggregate(
                 total=Sum('debt')
             )['total'] or 0,
-            'countries_count': NetworkNode.objects.values('country').distinct().count(),
+            'countries_count': NetworkNode.objects.values('contact__country').distinct().count(),
+            'nodes_by_type': dict(NetworkNode.objects.values_list('node_type').annotate(count=Count('id'))),
         }
         return Response(stats)
 

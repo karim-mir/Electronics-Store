@@ -1,7 +1,8 @@
-from django.db import models
-from django.core.validators import MinValueValidator
-from django.core.exceptions import ValidationError
 from decimal import Decimal
+
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
+from django.db import models
 
 
 class Contact(models.Model):
@@ -24,34 +25,30 @@ class Contact(models.Model):
 
     email = models.EmailField(
         unique=True,
-        verbose_name='Электронная почта',
-        help_text='Уникальный email адрес звена сети'
+        verbose_name="Электронная почта",
+        help_text="Уникальный email адрес звена сети",
     )
     country = models.CharField(
         max_length=100,
-        verbose_name='Страна',
-        help_text='Страна расположения звена сети'
+        verbose_name="Страна",
+        help_text="Страна расположения звена сети",
     )
     city = models.CharField(
-        max_length=100,
-        verbose_name='Город',
-        help_text='Город расположения звена сети'
+        max_length=100, verbose_name="Город", help_text="Город расположения звена сети"
     )
     street = models.CharField(
-        max_length=100,
-        verbose_name='Улица',
-        help_text='Улица расположения звена сети'
+        max_length=100, verbose_name="Улица", help_text="Улица расположения звена сети"
     )
     house_number = models.CharField(
         max_length=10,
-        verbose_name='Номер дома',
-        help_text='Номер дома расположения звена сети'
+        verbose_name="Номер дома",
+        help_text="Номер дома расположения звена сети",
     )
 
     class Meta:
-        verbose_name = 'Контакт'
-        verbose_name_plural = 'Контакты'
-        db_table = 'network_contacts'
+        verbose_name = "Контакт"
+        verbose_name_plural = "Контакты"
+        db_table = "network_contacts"
 
     def __str__(self):
         """Строковое представление контакта."""
@@ -81,24 +78,22 @@ class Product(models.Model):
 
     name = models.CharField(
         max_length=100,
-        verbose_name='Название',
-        help_text='Наименование продукта электроники'
+        verbose_name="Название",
+        help_text="Наименование продукта электроники",
     )
     model = models.CharField(
-        max_length=100,
-        verbose_name='Модель',
-        help_text='Модель или артикул продукта'
+        max_length=100, verbose_name="Модель", help_text="Модель или артикул продукта"
     )
     release_date = models.DateField(
-        verbose_name='Дата выхода на рынок',
-        help_text='Дата первого появления продукта на рынке'
+        verbose_name="Дата выхода на рынок",
+        help_text="Дата первого появления продукта на рынке",
     )
 
     class Meta:
-        verbose_name = 'Продукт'
-        verbose_name_plural = 'Продукты'
-        db_table = 'network_products'
-        ordering = ['name', 'model']
+        verbose_name = "Продукт"
+        verbose_name_plural = "Продукты"
+        db_table = "network_products"
+        ordering = ["name", "model"]
 
     def __str__(self):
         """Строковое представление продукта."""
@@ -156,65 +151,66 @@ class NetworkNode(models.Model):
             RETAIL: Розничная сеть - продажа через магазины (уровень 1-2)
             ENTREPRENEur: Индивидуальный предприниматель (уровень 1-2)
         """
-        FACTORY = 'factory', 'Завод'
-        RETAIL = 'retail', 'Розничная сеть'
-        ENTREPRENEUR = 'entrepreneur', 'Индивидуальный предприниматель'
+
+        FACTORY = "factory", "Завод"
+        RETAIL = "retail", "Розничная сеть"
+        ENTREPRENEUR = "entrepreneur", "Индивидуальный предприниматель"
 
     name = models.CharField(
         max_length=100,
-        verbose_name='Название',
-        help_text='Официальное название звена сети'
+        verbose_name="Название",
+        help_text="Официальное название звена сети",
     )
     node_type = models.CharField(
         max_length=20,
         choices=NodeType.choices,
-        verbose_name='Тип звена',
-        help_text='Тип звена в иерархии сети'
+        verbose_name="Тип звена",
+        help_text="Тип звена в иерархии сети",
     )
     contact = models.OneToOneField(
         Contact,
         on_delete=models.CASCADE,
-        verbose_name='Контактная информация',
-        help_text='Контактные данные звена сети'
+        verbose_name="Контактная информация",
+        help_text="Контактные данные звена сети",
     )
     products = models.ManyToManyField(
         Product,
-        verbose_name='Продукты',
+        verbose_name="Продукты",
         blank=True,
-        help_text='Продукты электроники, доступные у звена'
+        help_text="Продукты электроники, доступные у звена",
     )
     supplier = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='children',
-        verbose_name='Поставщик',
-        help_text='Вышестоящее звено в цепочке поставок'
+        related_name="children",
+        verbose_name="Поставщик",
+        help_text="Вышестоящее звено в цепочке поставок",
     )
     debt = models.DecimalField(
         max_digits=15,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.00'))],
+        validators=[MinValueValidator(Decimal("0.00"))],
         default=0.00,
-        verbose_name='Задолженность перед поставщиком',
-        help_text='Денежная задолженность в рублях с точностью до копеек'
+        verbose_name="Задолженность перед поставщиком",
+        help_text="Денежная задолженность в рублях с точностью до копеек",
     )
     created_at = models.DateTimeField(
         auto_now_add=True,
-        verbose_name='Время создания',
-        help_text='Автоматически устанавливается при создании записи'
+        verbose_name="Время создания",
+        help_text="Автоматически устанавливается при создании записи",
     )
 
     class Meta:
-        verbose_name = 'Звено сети'
-        verbose_name_plural = 'Звенья сети'
-        db_table = 'network_nodes'
-        ordering = ['-created_at']
+        verbose_name = "Звено сети"
+        verbose_name_plural = "Звенья сети"
+        db_table = "network_nodes"
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['node_type']),
-            models.Index(fields=['created_at']),
-            models.Index(fields=['supplier']),
+            models.Index(fields=["node_type"]),
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["supplier"]),
         ]
 
     @property
@@ -264,9 +260,9 @@ class NetworkNode(models.Model):
         """
         # Запрет на самоприсваивание
         if self.supplier and self.supplier.id == self.id:
-            raise ValidationError({
-                'supplier': 'Звено не может быть своим собственным поставщиком.'
-            })
+            raise ValidationError(
+                {"supplier": "Звено не может быть своим собственным поставщиком."}
+            )
 
         # Проверка циклических ссылок
         if self.supplier and self.pk:
@@ -275,23 +271,29 @@ class NetworkNode(models.Model):
 
             while current and current.pk not in visited:
                 if current.pk == self.pk:
-                    raise ValidationError({
-                        'supplier': 'Обнаружена циклическая ссылка в цепочке поставщиков.'
-                    })
+                    raise ValidationError(
+                        {
+                            "supplier": "Обнаружена циклическая ссылка в цепочке поставщиков."
+                        }
+                    )
                 visited.add(current.pk)
                 current = current.supplier
 
         # Завод не должен иметь поставщика
         if self.node_type == self.NodeType.FACTORY and self.supplier:
-            raise ValidationError({
-                'supplier': 'Завод не может иметь поставщика. Уровень завода всегда 0.'
-            })
+            raise ValidationError(
+                {
+                    "supplier": "Завод не может иметь поставщика. Уровень завода всегда 0."
+                }
+            )
 
         # Максимальная глубина иерархии - 2 уровня
         if self.hierarchy_level > 2:
-            raise ValidationError({
-                'supplier': f'Превышена максимальная глубина иерархии. Текущий уровень: {self.hierarchy_level}'
-            })
+            raise ValidationError(
+                {
+                    "supplier": f"Превышена максимальная глубина иерархии. Текущий уровень: {self.hierarchy_level}"
+                }
+            )
 
     def save(self, *args, **kwargs):
         """
@@ -315,7 +317,8 @@ class NetworkNode(models.Model):
             str: URL для доступа к детальной информации о звене сети
         """
         from django.urls import reverse
-        return reverse('networknode-detail', kwargs={'pk': self.pk})
+
+        return reverse("networknode-detail", kwargs={"pk": self.pk})
 
     def __str__(self):
         """Строковое представление объекта."""
