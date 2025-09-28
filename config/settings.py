@@ -8,9 +8,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
+# Настройки для Django
 DEBUG = True
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 # Добавляем приложения
 INSTALLED_APPS = [
@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     # Сторонние приложения
     "rest_framework",
     "django_filters",
+    "drf_yasg",
     # Наше приложение
     "network",
 ]
@@ -92,11 +93,13 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = "static/"
+# Настройки статических файлов
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Настройки DRF
+# Настройки DRF для корректного отображения
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -110,5 +113,8 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',  # Для HTML интерфейса
+    ]
 }
