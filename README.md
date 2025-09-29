@@ -58,6 +58,25 @@ poetry run python manage.py createsuperuser
 ```commandline
 poetry run python manage.py runserver
 ```
+
+## 📝 Заполнении данных
+### 🎲 Заполнение тестовыми данными
+- Заполнить базу тестовыми данными
+```commandline
+poetry run python manage.py seed_data
+```
+- Очистить и заполнить заново
+```commandline
+poetry run python manage.py seed_data --clear
+```
+#### Создает:
+
+- 5 продуктов электроники
+
+- 10 контактов с российскими городами
+
+- 9 узлов сети (2 завода, 3 розничные сети, 4 ИП)
+
 ## 🔧 API Endpoints
 ### Network Nodes
 - GET /api/v1/network-nodes/ - список всех узлов
