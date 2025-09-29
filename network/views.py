@@ -42,20 +42,23 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
     """
     ViewSet для выполнения CRUD операций с моделью NetworkNode.
     """
+
     queryset = NetworkNode.objects.all()
     serializer_class = NetworkNodeSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]  # Убрали DjangoFilterBackend
-    search_fields = ['name', 'contact__city', 'contact__country']
+    search_fields = ["name", "contact__city", "contact__country"]
 
     def get_queryset(self):
         """
         Возвращает оптимизированный QuerySet для NetworkNode.
         """
-        queryset = NetworkNode.objects.select_related('contact', 'supplier').prefetch_related('products')
+        queryset = NetworkNode.objects.select_related(
+            "contact", "supplier"
+        ).prefetch_related("products")
 
         # Ручная фильтрация по стране
-        country = self.request.query_params.get('country')
+        country = self.request.query_params.get("country")
         if country:
             queryset = queryset.filter(contact__country__iexact=country)
 
@@ -65,7 +68,7 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
         """
         Выбирает сериализатор в зависимости от выполняемого действия.
         """
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action in ["create", "update", "partial_update"]:
             return NetworkNodeCreateUpdateSerializer
         return NetworkNodeSerializer
 
@@ -73,13 +76,13 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
         """
         Обрабатывает запросы на обновление объекта.
         """
-        if 'debt' in request.data:
+        if "debt" in request.data:
             return Response(
                 {
-                    'error': 'Обновление задолженности запрещено через API',
-                    'detail': 'Используйте админ-панель для изменения задолженности'
+                    "error": "Обновление задолженности запрещено через API",
+                    "detail": "Используйте админ-панель для изменения задолженности",
                 },
-                status=status.HTTP_403_FORBIDDEN
+                status=status.HTTP_403_FORBIDDEN,
             )
         return super().update(request, *args, **kwargs)
 
@@ -87,32 +90,35 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
         """
         Обрабатывает запросы на частичное обновление объекта.
         """
-        if 'debt' in request.data:
+        if "debt" in request.data:
             return Response(
                 {
-                    'error': 'Обновление задолженности запрещено через API',
-                    'detail': 'Используйте админ-панель для изменения задолженности'
+                    "error": "Обновление задолженности запрещено через API",
+                    "detail": "Используйте админ-панель для изменения задолженности",
                 },
-                status=status.HTTP_403_FORBIDDEN
+                status=status.HTTP_403_FORBIDDEN,
             )
         return super().partial_update(request, *args, **kwargs)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def statistics(self, request):
         """
         Пользовательское действие для получения статистики по сети.
         """
         stats = {
-            'total_nodes': NetworkNode.objects.count(),
-            'total_debt': NetworkNode.objects.aggregate(
-                total=Sum('debt')
-            )['total'] or 0,
-            'countries_count': NetworkNode.objects.values('contact__country').distinct().count(),
-            'nodes_by_type': dict(NetworkNode.objects.values_list('node_type').annotate(count=Count('id'))),
+            "total_nodes": NetworkNode.objects.count(),
+            "total_debt": NetworkNode.objects.aggregate(total=Sum("debt"))["total"]
+            or 0,
+            "countries_count": NetworkNode.objects.values("contact__country")
+            .distinct()
+            .count(),
+            "nodes_by_type": dict(
+                NetworkNode.objects.values_list("node_type").annotate(count=Count("id"))
+            ),
         }
         return Response(stats)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def clear_debt(self, request, pk=None):
         """
         Очищает задолженность для конкретного звена сети.
@@ -122,9 +128,11 @@ class NetworkNodeViewSet(viewsets.ModelViewSet):
         node.debt = 0
         node.save()
 
-        return Response({
-            'message': 'Задолженность успешно очищена',
-            'old_debt': float(old_debt),
-            'new_debt': 0.00,
-            'node': node.name
-        })
+        return Response(
+            {
+                "message": "Задолженность успешно очищена",
+                "old_debt": float(old_debt),
+                "new_debt": 0.00,
+                "node": node.name,
+            }
+        )
